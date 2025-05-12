@@ -1,0 +1,118 @@
+# Project metadata
+[project]
+name = "finetuning-embeddings"  # Name of the project
+version = "0.1.0"  # Version of the project
+description = "NirmatAI Fine-tuning Embeddings"  # Short description of the project
+authors = [{ name = "Ilker Gul", email = "ilker.gul@certx.com" }]  # Author details
+readme = "README.md"  # Path to the README file
+requires-python = ">=3.12"  # Minimum required Python version
+
+# Project classifiers for PyPI
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+]
+
+# Project dependencies
+dependencies = [
+    "pandas==2.2.3",
+    "torch==2.6.0",
+    "openpyxl==3.1.5",
+    "numpy==2.2.2",
+    "seaborn==0.13.2",
+    "lxml==5.3.0",
+    "scikit-learn==1.5.2",
+    "datasets==3.5.0",
+    "sentence-transformers==4.1.0",
+]
+
+# Project URLs
+[project.urls]
+Homepage = "https://github.com/CertX-AI/finetuning-embeddings"  # Project homepage
+Issues = "https://github.com/CertX-AI/finetuning-embeddings/issues"  # Issue tracker
+
+# Optional dependencies
+[project.optional-dependencies]
+dev = [
+    "ruff==0.7.2",
+    "mypy==1.13.0",
+    "pytest==8.3.3",
+    "pytest-cov==4.1.0",
+    "pytest-asyncio==0.23.5",
+    "types-pyyaml==6.0.12.12",
+    "mlflow==2.22.0",
+    "ansible-lint==24.10.0",
+]
+docs = ["sphinx==7.3.7", "sphinx-rtd-theme==2.0.0"]
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py312"  # Target Python version
+
+# Selected linting rules
+lint.select = [
+    "E",   # pycodestyle
+    "W",   # pycodestyle
+    "F",   # Pyflakes
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "D",   # pydocstyle
+    "I",   # isort
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "TID", # flake8-tidy-imports
+    "Q",   # flake8-quotes
+    "UP",  # pyupgrade
+    "PT",  # flake8-pytest-style
+    "RUF", # Ruff-specific rules
+]
+
+# Pydocstyle configuration
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Documentation style convention
+
+# Pycodestyle configuration
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 88  # Maximum length of documentation lines
+
+# Flake8 Tidy Imports configuration
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"  # Ban all relative imports
+
+# Flake8 Type Checking configuration
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]  # Classes to evaluate at runtime
+
+# Mypy configuration
+[tool.mypy]
+python_version = "3.12"  # Target Python version
+strict = true  # Enable strict type checking
+check_untyped_defs = false  # Disable checking untyped definitions
+explicit_package_bases = true  # Require explicit package bases
+warn_unused_ignores = false  # Disable warnings for unused ignores
+exclude = ["tests"]  # Exclude test directory
+ignore_missing_imports = true  # Ignore missing imports
+
+# Pytest configuration
+[tool.pytest.ini_options]
+asyncio_mode = "auto"  # Auto mode for asyncio
+testpaths = ["tests"]  # Test paths
+addopts = ["--import-mode=importlib"]  # Additional options
+
+# Build system configuration
+[build-system]
+requires = ["setuptools>=74.0", "wheel"]  # Required build tools
+build-backend = "setuptools.build_meta"  # Build backend
+
+# Setuptools configuration
+[tool.setuptools]
+include-package-data = true  # Include package data
+
+# Setuptools package finding configuration
+[tool.setuptools.packages.find]
+include = ["finetuning_embeddings", "finetuning_embeddings.*"]  # Packages to include

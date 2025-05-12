@@ -1,0 +1,16 @@
+name: "Install Dependencies"
+description: "Action to build the project dependencies from the main versions"
+inputs:
+  python_version:
+    required: true
+    type: string
+    default: "3.12.1"
+
+runs:
+  using: composite
+  steps:
+    - name: Create Finetuning Embeddings POD
+      env:
+        POD_NAME: github
+      run: make run-github
+      shell: bash

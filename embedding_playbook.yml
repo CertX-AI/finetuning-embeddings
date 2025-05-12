@@ -1,0 +1,79 @@
+- name: Create pod and run containers
+  hosts: localhost
+  vars:
+    # The desired state of the containers (started/stopped)
+    container_state: started
+
+    # Set to true to use GPUs, false to not use GPUs
+    use_gpus: false
+
+    # Set to true to start only the development container for GitHub
+    start_github_only: false
+
+    # Set to true to start with the second gpu
+    second_gpu: false
+
+    # Set the gpu
+    gpus: "{{ 'nvidia.com/gpu=0' if second_gpu else 'nvidia.com/gpu=1' }}"
+
+    # Set the path for artifact storage
+    mlflow_artifacts: "/home/mlflow_server/mlflow_tracking/artifacts/:/home/mlflow_server/mlflow_tracking/artifacts/"
+
+    # Pod name derived from environment variable
+    pod_name: "{{ lookup('env', 'POD_NAME') | default(lookup('env', 'USER'), true) | regex_replace('/', '_') }}"
+
+    # Common environment variables for the development container
+    common_env:
+      MLFLOW_TRACKING_URI: "http://host.containers.internal:5000"
+      POD_NAME: "{{ pod_name }}"
+
+  tasks:
+    # Create a development image
+    - name: Build development image
+      containers.podman.podman_image:
+        name: finetuning_embeddings_dev
+        state: build
+        force: true
+        build:
+          file: ./Dockerfile
+
+    # Ensure pod name and container state are defined
+    - name: Ensure pod name and container state are set
+      ansible.builtin.assert:
+        that:
+          - pod_name is defined
+          - container_state is defined
+        fail_msg: "pod_name or container_state is not defined."
+
+    # Create a pod if not starting the dev container only
+    - name: Create pod
+      containers.podman.podman_pod:
+        name: "{{ pod_name }}"
+        state: "{{ container_state }}"
+        recreate: true
+
+    # Create a development container without GPU
+    - name: Create dev container without GPU
+      containers.podman.podman_container:
+        name: "{{ pod_name }}_dev"
+        image: finetuning_embeddings_dev:latest
+        state: "{{ container_state }}"
+        detach: true
+        pod: "{{ pod_name if not start_github_only else None }}"
+        volume:
+          - ./:/app
+        env: "{{ common_env }}"
+      when: not use_gpus | bool
+
+     # Create a development container with GPU
+    - name: Create dev container with GPU
+      containers.podman.podman_container:
+        name: "{{ pod_name }}_dev"
+        image: finetuning_embeddings_dev:latest
+        state: "{{ container_state }}"
+        detach: true
+        pod: "{{ pod_name }}"
+        volume: "{{ ['./:/app', mlflow_artifacts] if not start_github_only | bool else ['./:/app'] }}"
+        env: "{{ common_env }}"
+        device: "{{ [gpus] if use_gpus | bool else omit }}"
+      when: use_gpus | bool

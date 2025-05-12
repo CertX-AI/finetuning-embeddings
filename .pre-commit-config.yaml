@@ -1,0 +1,84 @@
+# Default hooks to install
+default_install_hook_types:
+  # Install pre-commit, pre-push, and pre-merge-commit hooks
+  - pre-commit
+  - pre-push
+  - pre-merge-commit
+
+repos:
+  # Repository for common pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      # Trim trailing whitespace from files
+      - id: trailing-whitespace
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+      # Check TOML files
+      - id: check-toml
+      # Validate YAML files
+      - id: check-yaml
+      # Prevent adding large files to the repository
+      - id: check-added-large-files
+      # Check for unresolved merge conflicts in files
+      - id: check-merge-conflict
+      # Detect private keys
+      - id: detect-private-key
+
+  # Local repository for custom hooks
+  - repo: local
+    hooks:
+      # Check if the dev container exists
+      - id: dev_exists
+        name: Check if dev container exists
+        entry: make dev-exists
+        language: system
+        stages: [pre-commit, pre-merge-commit, pre-push, manual]
+
+      # Run ansible-lint
+      - id: ansible-lint
+        name: Linting (ansible-lint)
+        entry: make ansible-lint
+        language: system
+        stages: [pre-commit, pre-merge-commit, pre-push, manual]
+
+      # Format code with ruff
+      - id: ruff
+        name: Formatting (ruff)
+        entry: make format-code
+        language: system
+        types: [python]
+        stages: [commit]
+
+      # Lint code with ruff
+      - id: ruff-check
+        name: Linter (ruff)
+        entry: make check-format-code
+        language: system
+        types: [python]
+        stages: [commit]
+
+      # Type check with mypy
+      - id: mypy
+        name: Type checking (mypy)
+        entry: make type-check
+        pass_filenames: false
+        language: system
+        types: [python]
+        stages: [commit]
+
+      # Run unit tests with pytest
+      - id: unit-tests
+        name: Unit tests (pytest)
+        entry: make test
+        language: system
+        types: [python]
+        stages: [commit]
+
+      # Build documentation with Sphinx
+      - id: docs
+        name: Build docs
+        entry: make build-docs
+        language: system
+        types: [python]
+        stages: [commit]

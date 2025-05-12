@@ -1,0 +1,133 @@
+name: Static tests  # The name of the GitHub Actions workflow
+
+on:
+  push:
+    branches:
+      - main  # Trigger workflow on pushes to the main branch
+  pull_request:  # Trigger workflow on pull requests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref || github.ref }}
+  # Grouping concurrent runs by workflow name and PR number or branch
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Cancel in-progress runs if a new run is triggered by a PR
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    # Use the latest Ubuntu environment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Checkout the repository
+      - name: Setting up the relevant container and run development
+        uses: ./.github/workflows/actions/install_dependencies
+      # Run custom action to install dependencies
+
+  checks:
+    needs: setup
+    # This job depends on the setup job
+    runs-on: ubuntu-latest
+    name: ${{ matrix.quality-command }}
+    # Dynamic job name based on the matrix value
+    strategy:
+      matrix:
+        quality-command:
+          - ansible-lint
+          - check-format-code
+          # Command to check code formatting
+          - type-check
+          # Command to check type annotations
+    steps:
+      - uses: actions/checkout@v4
+      # Checkout the repository
+      - uses: ./.github/workflows/actions/install_dependencies
+      # Run custom action to install dependencies
+      - name: run ${{ matrix.quality-command }}
+      # Run the specific quality check command
+        env:
+          POD_NAME: github  # Set environment variable
+        run: |
+          if [ "${{ matrix.quality-command }}" = "ansible-lint" ]; then
+            make ansible-lint ARGS="-x .forgejo"
+          else
+            make ${{ matrix.quality-command }}
+          fi
+        # Execute the make command for the quality check
+
+  tests:
+    needs: setup
+    # This job depends on the setup job
+    runs-on: ubuntu-latest
+    name: tests  # Job name
+    steps:
+      - uses: actions/checkout@v4
+      # Checkout the repository
+      - uses: ./.github/workflows/actions/install_dependencies
+      # Run custom action to install dependencies
+      - name: run test without integration tests
+      # Run tests excluding integration tests
+        env:
+          POD_NAME: github
+          # Set environment variable
+        run: make test
+        # Execute the make test command
+      - name: run coverage without integration tests
+      # Run coverage check excluding integration tests
+        env:
+          POD_NAME: github
+          # Set environment variable
+        run: make test-coverage
+        # Execute the make test-coverage command
+      - name: Archive code coverage results
+      # Archive the coverage results
+        uses: actions/upload-artifact@v4
+        # Upload artifact action
+        if: always()
+        # Always run this step
+        with:
+          name: code-coverage-report
+          # Name of the artifact
+          path: htmlcov/
+          # Path to the coverage report
+
+  docs:
+    needs: setup
+    # This job depends on the setup job
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Checkout the repository
+      - uses: ./.github/workflows/actions/install_dependencies
+      # Run custom action to install dependencies
+      - name: run docs
+      # Build the documentation
+        env:
+          POD_NAME: github
+          # Set environment variable
+        run: make build-docs
+        # Execute the make build-docs command
+      - name: Archive docs
+      # Archive the documentation
+        uses: actions/upload-artifact@v4
+        # Upload artifact action
+        if: always()
+        # Always run this step
+        with:
+          name: docs
+          # Name of the artifact
+          path: docs/build/
+          # Path to the built documentation
+
+  all_checks_passed:
+    needs:
+      - checks
+      # This job depends on the checks job
+      - tests
+      # This job depends on the tests job
+      - docs
+      # This job depends on the docs job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks passed and docs built successfully!"
+      # Output a success message
