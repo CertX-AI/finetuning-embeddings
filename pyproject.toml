@@ -20,13 +20,14 @@ classifiers = [
 # Project dependencies
 dependencies = [
     "pandas==2.2.3",
-    "torch==2.6.0",
+    "torch==2.7.0",
     "openpyxl==3.1.5",
     "numpy==2.2.2",
     "seaborn==0.13.2",
     "lxml==5.3.0",
     "scikit-learn==1.5.2",
     "datasets==3.5.0",
+    "transformers==4.49.0",
     "sentence-transformers==4.1.0",
 ]
 
@@ -41,9 +42,9 @@ dev = [
     "ruff==0.7.2",
     "mypy==1.13.0",
     "pytest==8.3.3",
-    "pytest-cov==4.1.0",
-    "pytest-asyncio==0.23.5",
-    "types-pyyaml==6.0.12.12",
+    "pytest-cov==5.0.0",
+    "pytest-asyncio==0.24.0",
+    "types-pyyaml==6.0.12.20241221",
     "mlflow==2.22.0",
     "ansible-lint==24.10.0",
 ]
