@@ -7,10 +7,13 @@ from sentence_transformers import SentenceTransformer
 from sentence_transformers.losses import (
     CachedMultipleNegativesRankingLoss,
     CachedMultipleNegativesSymmetricRankingLoss,
+    ContrastiveLoss,
     MatryoshkaLoss,
     MegaBatchMarginLoss,
     MultipleNegativesRankingLoss,
     MultipleNegativesSymmetricRankingLoss,
+    OnlineContrastiveLoss,
+    TripletLoss,
 )
 
 
@@ -143,6 +146,8 @@ def print_available_losses(input_type: str) -> None:
 ################### LIST LOSS FUNCTIONS ####################
 
 ###################### LOSS FUNCTIONS ######################
+
+############### ANCHOR-POSITIVE PAIRS LOSSES ###############
 
 def get_MNRL_or_matryoshka_loss(
     model: SentenceTransformer,
@@ -330,5 +335,118 @@ def get_megabatch_margin_or_matryoshka_loss(
 
     # Otherwise return the standard MegaBatchMarginLoss
     return base_loss
+
+############### ANCHOR-POSITIVE PAIRS LOSSES ###############
+
+######### (ANCHOR, POSITIVE/NAGATIVE) PAIRS LOSSES #########
+
+def get_contrastive_loss_or_matryoshka_loss(
+    model: SentenceTransformer,
+    use_matryoshka: bool = False,
+    matryoshka_dims: list[int] | None = None
+) -> ContrastiveLoss | MatryoshkaLoss:
+    """Return either a ContrastiveLoss or a MatryoshkaLoss-wrapped ContrastiveLoss.
+
+    :param model:            A SentenceTransformer instance.
+    :param use_matryoshka:   If True, wrap the base contrastive loss in MatryoshkaLoss.
+    :param matryoshka_dims:  Nested embedding dims for Matryoshka (defaults to
+                             [768, 512, 256, 128, 64] if None).
+    :return:                 A ContrastiveLoss or MatryoshkaLoss instance.
+    """
+    # Default nested dimensions if none provided
+    if matryoshka_dims is None:
+        matryoshka_dims = [768, 512, 256, 128, 64]
+
+    # Create the base contrastive loss:
+    # ContrastiveLoss trains on (anchor, positive/negative) pairs with a margin
+    base_loss = ContrastiveLoss(model)
+
+    # Wrap in MatryoshkaLoss if requested:
+    # - Trains a series of projection heads from largest to smallest dim,
+    #   enforcing each smaller head to mimic its predecessor.
+    if use_matryoshka:
+        return MatryoshkaLoss(
+            model=model,
+            loss=base_loss,
+            matryoshka_dims=matryoshka_dims
+        )
+
+    # Otherwise return the standard contrastive loss
+    return base_loss
+
+def get_online_contrastive_loss_or_matryoshka_loss(
+    model: SentenceTransformer,
+    use_matryoshka: bool = False,
+    matryoshka_dims: list[int] | None = None
+) -> OnlineContrastiveLoss | MatryoshkaLoss:
+    """Return OnlineContrastiveLoss or a MatryoshkaLoss-wrapped OnlineContrastiveLoss.
+
+    :param model:            A SentenceTransformer instance.
+    :param use_matryoshka:   If True, wrap the base loss in MatryoshkaLoss.
+    :param matryoshka_dims:  Nested embedding dims for Matryoshka (defaults to
+                             [768, 512, 256, 128, 64] if None).
+    :return:                 An OnlineContrastiveLoss or MatryoshkaLoss instance.
+    """
+    # Provide default nested dimensions if none were supplied
+    if matryoshka_dims is None:
+        matryoshka_dims = [768, 512, 256, 128, 64]
+
+    # Create the base online contrastive loss:
+    # OnlineContrastiveLoss mines hard positives and negatives within each batch
+    base_loss = OnlineContrastiveLoss(model)
+
+    # If Matryoshka is requested, wrap the base loss to train nested heads:
+    # - Each projection head from largest to smallest dim is trained to mimic
+    #   the next-larger head, fostering multi-scale representations.
+    if use_matryoshka:
+        return MatryoshkaLoss(
+            model=model,
+            loss=base_loss,
+            matryoshka_dims=matryoshka_dims
+        )
+
+    # Otherwise return the standard OnlineContrastiveLoss
+    return base_loss
+
+######### (ANCHOR, POSITIVE/NAGATIVE) PAIRS LOSSES #########
+
+####### (ANCHOR, POSITIVE, NAGATIVE) TRIPLETS LOSSES #######
+
+def get_triplet_loss_or_matryoshka_loss(
+    model: SentenceTransformer,
+    use_matryoshka: bool = False,
+    matryoshka_dims: list[int] | None = None
+) -> TripletLoss | MatryoshkaLoss:
+    """Return either a TripletLoss or a MatryoshkaLoss-wrapped TripletLoss.
+
+    :param model:            A SentenceTransformer instance.
+    :param use_matryoshka:   If True, wrap the base triplet loss in MatryoshkaLoss.
+    :param matryoshka_dims:  Nested embedding dims for Matryoshka (defaults to
+                             [768, 512, 256, 128, 64] if None).
+    :return:                 A TripletLoss or MatryoshkaLoss instance.
+    """
+    # Default nested dimensions if none provided
+    if matryoshka_dims is None:
+        matryoshka_dims = [768, 512, 256, 128, 64]
+
+    # Create the base triplet loss:
+    # TripletLoss trains on (anchor, positive, negative) triplets enforcing
+    # anchor-positive similarity > anchor-negative similarity by a margin.
+    base_loss = TripletLoss(model)
+
+    # Wrap in MatryoshkaLoss if requested:
+    # - Trains a series of projection heads from largest to smallest dim,
+    #   each smaller head mimicking the next larger head.
+    if use_matryoshka:
+        return MatryoshkaLoss(
+            model=model,
+            loss=base_loss,
+            matryoshka_dims=matryoshka_dims
+        )
+
+    # Otherwise return the standard TripletLoss
+    return base_loss
+
+####### (ANCHOR, POSITIVE, NAGATIVE) TRIPLETS LOSSES #######
 
 ###################### LOSS FUNCTIONS ######################
