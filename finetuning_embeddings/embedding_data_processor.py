@@ -1,4 +1,4 @@
-"""data_processor module.
+"""embedding_data_processor module.
 
 Contains data processing utilities for embedding fine-tuning.
 """
@@ -8,7 +8,7 @@ import pandas as pd
 from utils import validate_file_path
 
 
-class DataProcessor:
+class EmbeddingDataProcessor:
     """A class for processing data files for embedding fine-tuning.
 
     Attributes:
@@ -86,12 +86,61 @@ class DataProcessor:
 
         return df
 
-    def process_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply processing steps to the loaded DataFrame.
+    def process_data(self, df: pd.DataFrame, complexity: str) -> pd.DataFrame:
+        """Apply processing steps to the DataFrame based on complexity.
 
-        To be implemented in the next commit.
+        Args:
+            df (pd.DataFrame): DataFrame loaded from file.
+            complexity (str): Mode of processing; 'complex' or 'basic'.
+
+        Raises:
+            ValueError: If required columns are missing.
+
+        Returns:
+            pd.DataFrame: Processed DataFrame.
         """
-        raise NotImplementedError
+        # Ensure required columns exist
+        missing = [col for col in ("Instruction", "Answer") if col not in df.columns]
+        if missing:
+            raise ValueError(
+                f"Missing required column(s): {', '.join(missing)}"
+            )
+
+        if complexity == "complex":
+            # Complex processing: duplicate entries without question mark
+            processed = df.copy()
+            # Identify rows where Instruction contains '?'
+            mask = processed["Instruction"].astype(str).str.contains(r"\?")
+            # Create new entries with '?' removed from Instruction
+            extras = processed[mask].copy()
+            extras["Instruction"] = extras["Instruction"].astype(str).str.replace(
+                "?",
+                "",
+                regex=False
+            )
+            # Combine original and new entries
+            combined = pd.concat([processed, extras], ignore_index=True)
+            # Select and rename for embedding
+            processed_df = combined[["Instruction", "Answer"]].copy()
+            processed_df.rename(
+                columns={
+                    "Instruction": "anchor",
+                    "Answer": "positive"
+                },
+                inplace=True
+            )
+        else:
+            # Basic processing: select and rename for embedding
+            processed_df = df[["Instruction", "Answer"]].copy()
+            processed_df.rename(
+                columns={
+                    "Instruction": "anchor",
+                    "Answer": "positive"
+                },
+                inplace=True
+            )
+
+        return processed_df
 
     def save_data(self, df: pd.DataFrame) -> None:
         """Save processed DataFrame to the output file.

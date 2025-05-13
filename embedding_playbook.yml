@@ -22,10 +22,14 @@
     # Pod name derived from environment variable
     pod_name: "{{ lookup('env', 'POD_NAME') | default(lookup('env', 'USER'), true) | regex_replace('/', '_') }}"
 
+    # OpenAI API key (fallback to TEMP_KEY if not set)
+    openai_api_key: "{{ lookup('env', 'OPENAI_API_KEY') | default('TEMP_KEY', true) }}"
+
     # Common environment variables for the development container
     common_env:
       MLFLOW_TRACKING_URI: "http://host.containers.internal:5000"
       POD_NAME: "{{ pod_name }}"
+      OPENAI_API_KEY: "{{ openai_api_key }}"
 
   tasks:
     # Create a development image
