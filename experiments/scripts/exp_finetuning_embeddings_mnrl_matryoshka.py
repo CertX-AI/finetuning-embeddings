@@ -1,5 +1,5 @@
 """
-exp_finetuning_embeddings_mnrl_triplet.py
+exp_finetune_embeddings_mnrl_matryoshka.py
 
 This script fine-tunes a SentenceTransformer model using a custom dataset and logs
 the process and results to MLflow. The script supports argument parsing for various
@@ -25,9 +25,9 @@ Arguments:
     --model_name: Pre-trained model name to fine-tune (required).
 
 Usage Example:
-    python exp_finetune_embeddings_mnrl_triplet.py --num_train_epochs 1 \
-        --experiment_name "triplet_pair_finetuning" --run_name "fine_tune_run_1" \
-        --output_dir "docs/models/mpnet-base-all-nli-triplet/final" --learning_rate 3e-5 \
+    python exp_finetuning_embeddings_mnrl_matryoshka.py --num_train_epochs 1 \
+        --experiment_name "test_matryoshka" --run_name "fine_tune_run_1" \
+        --output_dir "experiments/results/matryoshka/mpnet-base-all-nli-triplet/final" --learning_rate 3e-5 \
         --model_name "all-mpnet-base-v2"
 """
 
@@ -38,8 +38,8 @@ from finetuning_embeddings.embedding_utils import (
     prepare_finetune_dataset,
     initialize_model,
     get_MNRL_or_matryoshka_loss,
-    create_training_arguments,
-    create_tripletloss_evaluator,
+    create_training_arguments_matryoshka,
+    create_matryoshka_info_ret_evaluator,
 )
 
 def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate, model_name):
@@ -60,39 +60,39 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
     with mlflow.start_run():
         # 1. Load the dataset to finetune on
         print("Loading dataset...")
-        finetune_dataset = prepare_finetune_dataset(flag=True)
-        train_dataset = finetune_dataset["train"].select(range(20_000))  # Subset for testing
-        eval_dataset = finetune_dataset["dev"]
+        finetune_dataset = prepare_finetune_dataset(flag=False)
+        train_dataset = finetune_dataset["train"]
         test_dataset = finetune_dataset["test"]
 
         # 2. Load the model to finetune and define the MNRL loss function
         print(f"Loading model '{model_name}'...")
         training_model =  initialize_model(model_name, use_prompts=False)
 
-        # 3. Define the MNRL loss function
-        print(f"Creating an Instance for Multiple Negatives Ranking Loss...")
+       # 3. Define the MNRL loss function
+        print("Creating an instance for Multiple Negatives Ranking Loss...")
+
+        # Only provide Matryoshka dims for “large” models
+        if "large" in model_name:
+            matryoshka_dims = [1024, 768, 512, 256, 128, 64]
+        else:
+            matryoshka_dims = None
+
         loss = get_MNRL_or_matryoshka_loss(
-            model= training_model,
-            use_matryoshka=False
+            model=training_model,
+            use_matryoshka=True,
+            matryoshka_dims=matryoshka_dims,
         )
 
         # 4. Specify training arguments
         print("Configuring training arguments...")
-        training_args = create_training_arguments(
+        training_args = create_training_arguments_matryoshka(
             output_dir=output_dir,
             num_train_epochs=num_train_epochs,
             learning_rate=learning_rate,
             run_name=run_name
         )
 
-        # 5. Evaluate the trained model on the test set before training
-        print("Creating test evaluator...")
-        init_evaluator = create_tripletloss_evaluator(test_dataset, name="all-nli-test-before-finetuning")
-        print("Evaluating on test dataset before finetuning...")
-        test_score = init_evaluator(training_model)
-        mlflow.log_metrics(test_score)
-
-        # 6. Log training arguments to MLflow
+        # 5. Log training arguments to MLflow
         mlflow.log_params({
             "output_dir": training_args.output_dir,
             "num_train_epochs": training_args.num_train_epochs,
@@ -111,39 +111,53 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
             "run_name": training_args.run_name,
         })
 
-        # 7. Create the evaluator for the dev dataset
-        print("Creating dev evaluator...")
-        dev_evaluator = create_tripletloss_evaluator(eval_dataset, name="all-nli-dev")
+        # 5. Create the evaluator for the dev dataset
+        print("Creating Matryoshka evaluator...")
+        matryoshka_evaluator = create_matryoshka_info_ret_evaluator(
+            train_dataset,
+            test_dataset
+        )
 
-        # 8. Create a trainer and start training
+        # Important: large to small
+        matryoshka_dimensions = [768, 512, 256, 128, 64]
+        print("Evaluation before finetuning")
+        # Evaluate the model
+        results = matryoshka_evaluator(training_model)
+
+        # Iterate over matryoshka dimensions and log the results
+        for dim in matryoshka_dimensions:
+            key = f"dim_{dim}_cosine_ndcg@10"
+            metric_key = f"before-finetuning_dim_{dim}_cosine_ndcg-10"  # Add the prefix here
+            print(f"{metric_key}: {results[key]}")
+            mlflow.log_metric(metric_key, results[key])
+
+        # 6. Create a trainer and start training
         print("Starting training...")
         trainer = SentenceTransformerTrainer(
             model=training_model,
             args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
+            train_dataset=train_dataset.select_columns(
+                ["anchor", "positive"]
+            ),
             loss=loss,
-            evaluator=dev_evaluator,
+            evaluator=matryoshka_evaluator,
         )
         trainer.train()
 
-        # 7. Evaluate the trained model on the dev set after training
-        print("Evaluating on dev dataset...")
-        dev_score = dev_evaluator(training_model)
-        mlflow.log_metrics(dev_score)
+        # 7. Evaluate the trained model
+        print("Evaluation after finetuning")
+        # Evaluate the model
+        final_results = matryoshka_evaluator(training_model)
 
-        # 8. Create the evaluator for the test dataset
-        print("Creating test evaluator...")
-        test_evaluator = create_tripletloss_evaluator(test_dataset, name="all-nli-test-after-finetuning")
+        # Iterate over matryoshka dimensions and log the results
+        for dim in matryoshka_dimensions:
+            metric_key = f"after-finetuning_dim_{dim}_cosine_ndcg-10"  # Add the prefix here
+            print(f"{metric_key}: {final_results[key]}")
+            mlflow.log_metric(metric_key, final_results[key])
 
-        # 9. Evaluate the trained model on the test set after training
-        print("Evaluating on test dataset after finetuning...")
-        test_score = test_evaluator(training_model)
-        mlflow.log_metrics(test_score)
-
-        # 10. Save the trained model locally
+        # 8. Save the trained model locally
         print(f"Saving the model to {output_dir}...")
-        training_model.save_pretrained(output_dir)
+        trainer.save_model()
 
 if __name__ == "__main__":
     # Argument parsing
@@ -201,5 +215,5 @@ if __name__ == "__main__":
     )
 
     print(f"Embedding model {args.model_name} is successfully finetuned!!!")
-    print(f"Multiple Negatives Ranking Loss (MNRL) technique has been used !!!")
+    print(f"Multiple Negatives Ranking Loss (MNRL) with Matryoshka technique has been used !!!")
     print(f"Embedding model can be found in {args.output_dir} folder!!!")

@@ -49,7 +49,7 @@ def main():
     )
     parser.add_argument(
         "--yaml-file", type=str,
-        default="experiments/embedding_configs.yaml",
+        default="experiments/configs/embedding_configs.yaml",
         help="Path to the YAML configuration file defining experiments."
     )
     args = parser.parse_args()
@@ -64,7 +64,7 @@ def main():
         )
 
     print(f"Experiment method: {method}")
-    print(f"Pod name:           {pod_name}")
+    print(f"Pod name: {pod_name}")
 
     # Load hyperparameters list and script name from the YAML config
     parameters, python_script = load_parameters(method, yaml_file)
@@ -75,7 +75,7 @@ def main():
     # 3: output_dir template, 4: learning_rate, 5: model_name
     num_train_epochs_options = parameters[0]["num_train_epochs"]
     experiment_name         = parameters[1]["experiment_name"]
-    run_name                = parameters[2]["run_name"]
+    temp_run_name           = parameters[2]["run_name"]
     base_output_dir         = parameters[3]["output_dir"]
     learning_rate_options   = parameters[4]["learning_rate"]
     model_name_options      = parameters[5]["model_name"]
@@ -87,10 +87,17 @@ def main():
         model_name_options
     ))
 
+    # Start the pod
+    os.system("make run-local")
+
     # Execute each experiment combination inside the Podman container
     for num_epochs, lr, model_name in parameter_combinations:
         # Substitute the model name into the output directory path
         output_dir = base_output_dir.replace("mpnet-base-all-nli", model_name)
+        run_name = temp_run_name.replace(
+            f"test_{method}",
+            f"test_{model_name}_{method}"
+        )
 
         # Build the command-line arguments for the training script
         element_args = (
@@ -98,13 +105,13 @@ def main():
             f"--learning_rate {lr} "
             f"--model_name {model_name} "
             f"--output_dir {output_dir} "
-            f"--experiment_name {experiment_name}"
+            f"--experiment_name {experiment_name} "
             f"--run_name {run_name}"
         )
 
         print(
             f"Running {method} experiment with "
-            f"epochs={num_epochs}, lr={lr}, model={model_name}"
+            f"epochs={num_epochs}, lr={lr}, model={model_name}\n"
         )
         print(f"Command args: {element_args}")
 

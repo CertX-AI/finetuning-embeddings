@@ -34,8 +34,11 @@ stop-local:
 	-e "container_state=absent" \
 	-e "use_gpus=true"
 
-test-embeddings:
-	python3 experiments/embedding_tests.py --method triplet --pod-name $(POD_NAME)
+test-embeddings-triplet:
+	python3 experiments/scripts/embedding_tests.py --method triplet --pod-name $(POD_NAME)
+
+test-embeddings-matryoshka:
+	python3 experiments/scripts/embedding_tests.py --method matryoshka --pod-name $(POD_NAME)
 
 # Define the container name based on the POD_NAME
 CONTAINER_NAME := $(POD_NAME)_dev

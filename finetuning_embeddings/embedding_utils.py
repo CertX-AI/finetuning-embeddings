@@ -126,7 +126,7 @@ def initialize_model(
     """
     # If prompts are disabled, load plain model
     if not use_prompts:
-        return SentenceTransformer(model_name)
+        return SentenceTransformer(model_name, trust_remote_code=True)
 
     # Validate default prompt name
     if default_prompt_name is not None:
@@ -143,20 +143,25 @@ def initialize_model(
 
     # Load without any prompts
     if prompts is None and default_prompt_name is None:
-        return SentenceTransformer(model_name)
+        return SentenceTransformer(
+            model_name,
+            trust_remote_code=True
+        )
 
     # Load with prompts but no default
     if prompts is not None and default_prompt_name is None:
         return SentenceTransformer(
             model_name,
-            prompts=prompts
+            prompts=prompts,
+            trust_remote_code=True
         )
 
     # Load with both prompts and a default prompt
     return SentenceTransformer(
         model_name,
         prompts=prompts,
-        default_prompt_name=default_prompt_name
+        default_prompt_name=default_prompt_name,
+        trust_remote_code=True
     )
 
 
@@ -687,11 +692,14 @@ def create_training_arguments_matryoshka(
         per_device_eval_batch_size=per_device_eval_batch_size,
         learning_rate=learning_rate,
         warmup_ratio=warmup_ratio,
+        lr_scheduler_type="cosine",
+        optim="adamw_torch_fused",
         tf32=tf32,
         bf16=bf16,
         batch_sampler=BatchSamplers.NO_DUPLICATES,
         eval_strategy=eval_strategy,
         save_strategy=save_strategy,
+        logging_steps=100,
         save_total_limit=save_total_limit,
         load_best_model_at_end=load_best_model_at_end,
         metric_for_best_model=metric_for_best_model,

@@ -3,27 +3,27 @@ triplet:
   model-parameters:
     - num_train_epochs: [2, 3]
     - experiment_name: "finetuning_embeddings_triplet_test"
-    - run_name: ["test-all-mpnet-base-v2-triplet", "test-bge-base-en-v1.5-triplet", "test-gte-large-en-v1.5-triplet"]
+    - run_name: "test_triplet"
     - output_dir: "experiments/results/mpnet-base-all-nli-triplet/final"
     - learning_rate: [5e-4, 2e-5]
-    - model_name: ["all-mpnet-base-v2", "BAAI/bge-base-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
+    - model_name: ["all-mpnet-base-v2", "nomic-ai/nomic-embed-text-v2-moe", "BAAI/bge-base-en-v1.5", "BAAI/bge-large-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
 
 contrastive:
   script: "exp_finetuning_embeddings_mnrl_contrastive.py"
   model-parameters:
     - num_train_epochs: [2, 3, 4]
     - experiment_name: "finetuning_embeddings_contrastive_test"
-    - run_name: ["test-all-mpnet-base-v2-contrastive", "test-bge-base-en-v1.5-contrastive", "test-gte-large-en-v1.5-contrastive"]
+    - run_name: "test_contrastive"
     - output_dir: "experiments/results/mpnet-base-all-nli-contrastive/final"
     - learning_rate: [1e-3, 5e-4, 3e-4, 1e-4, 4e-5, 2e-5, 1e-5]
-    - model_name: ["all-mpnet-base-v2", "BAAI/bge-base-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
+    - model_name: ["all-mpnet-base-v2", "nomic-ai/nomic-embed-text-v2-moe", "BAAI/bge-base-en-v1.5", "BAAI/bge-large-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
 
 matryoshka:
   script: "exp_finetuning_embeddings_mnrl_matryoshka_pair.py"
   model-parameters:
-    - num_train_epochs: [2, 3, 4]
+    - num_train_epochs: [2, 3]
     - experiment_name: "finetuning_embeddings_matryoshka_test"
-    - run_name: ["test-all-mpnet-base-v2-matryoshka", "test-bge-base-en-v1.5-matryoshka", "test-gte-large-en-v1.5-matryoshka"]
+    - run_name: "test_matryoshka"
     - output_dir: "experiments/results/matryoshka/mpnet-base-all-nli-matryoshka"
-    - learning_rate: [1e-3, 5e-4, 3e-4, 1e-4, 4e-5, 2e-5, 1e-5]
-    - model_name: ["all-mpnet-base-v2", "BAAI/bge-base-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
+    - learning_rate: [5e-4, 2e-5]
+    - model_name: ["all-mpnet-base-v2", "nomic-ai/nomic-embed-text-v2-moe", "BAAI/bge-base-en-v1.5", "BAAI/bge-large-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
