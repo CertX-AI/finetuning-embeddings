@@ -26,6 +26,20 @@ def check_gpu() -> None:
             f"{torch.cuda.get_device_properties(0).total_memory / (1024 ** 3):.2f} GB"
         )
         print(f"CUDA Capability: {torch.cuda.get_device_capability(0)}")
+
+        cc = torch.cuda.get_device_capability(0)
+        # Check compute capability
+        if cc[0] >= 8:
+            print(" → Compute capability ≥ 8.0: BF16 support is likely.")
+        else:
+            print(" → Compute capability < 8.0: BF16 support is unlikely.")
+
+        # Try a runtime BF16 tensor allocation
+        try:
+            _ = torch.empty((1,), dtype=torch.bfloat16, device="cuda")
+            print(" → Successfully allocated a BFloat16 tensor: BF16 is supported.")
+        except (RuntimeError, TypeError):
+            print(" → Failed to allocate a BFloat16 tensor: BF16 is not supported.")
     else:
         print("You do not have a GPU available.")
 
