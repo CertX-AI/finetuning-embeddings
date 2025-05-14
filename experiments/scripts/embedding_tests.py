@@ -116,7 +116,7 @@ def main():
 
     print("All experiments finished. Stopping the pod.")
     # Stop the Podman pod using a Makefile target or custom script
-    os.system("make stop")
+    os.system("make stop-local")
 
 if __name__ == "__main__":
     main()

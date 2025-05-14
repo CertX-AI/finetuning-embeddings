@@ -1,11 +1,11 @@
 triplet:
   script: "exp_finetuning_embeddings_mnrl_triplet.py"
   model-parameters:
-    - num_train_epochs: [2, 3, 4]
+    - num_train_epochs: [2, 3]
     - experiment_name: "finetuning_embeddings_triplet_test"
     - run_name: ["test-all-mpnet-base-v2-triplet", "test-bge-base-en-v1.5-triplet", "test-gte-large-en-v1.5-triplet"]
     - output_dir: "experiments/results/mpnet-base-all-nli-triplet/final"
-    - learning_rate: [1e-3, 5e-4, 3e-4, 1e-4, 4e-5, 2e-5, 1e-5]
+    - learning_rate: [5e-4, 2e-5]
     - model_name: ["all-mpnet-base-v2", "BAAI/bge-base-en-v1.5", "Alibaba-NLP/gte-large-en-v1.5"]
 
 contrastive:
