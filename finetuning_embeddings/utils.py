@@ -88,3 +88,10 @@ def validate_file_path(file_path: str, is_output: bool = False) -> bool:
             print(f"{file_type} file validated for input.")
             return True
         return False
+
+# Public API for this module
+
+__all__ = [
+    "check_gpu",
+    "validate_file_path",
+]

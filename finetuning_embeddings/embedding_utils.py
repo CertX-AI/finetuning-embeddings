@@ -7,32 +7,101 @@ from datetime import datetime
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset, DatasetDict, concatenate_datasets, load_dataset
 from sentence_transformers import (
-    SentenceTransformer,
-    SentenceTransformerTrainingArguments,
+        SentenceTransformer,
+        SentenceTransformerTrainingArguments,
 )
 from sentence_transformers.evaluation import (
-    InformationRetrievalEvaluator,
-    NanoBEIREvaluator,
-    SequentialEvaluator,
-    TripletEvaluator,
+        InformationRetrievalEvaluator,
+        NanoBEIREvaluator,
+        SequentialEvaluator,
+        TripletEvaluator,
 )
 from sentence_transformers.losses import (
-    CachedMultipleNegativesRankingLoss,
-    CachedMultipleNegativesSymmetricRankingLoss,
-    ContrastiveLoss,
-    Matryoshka2dLoss,
-    MatryoshkaLoss,
-    MegaBatchMarginLoss,
-    MultipleNegativesRankingLoss,
-    MultipleNegativesSymmetricRankingLoss,
-    OnlineContrastiveLoss,
-    TripletLoss,
+        CachedMultipleNegativesRankingLoss,
+        CachedMultipleNegativesSymmetricRankingLoss,
+        ContrastiveLoss,
+        Matryoshka2dLoss,
+        MatryoshkaLoss,
+        MegaBatchMarginLoss,
+        MultipleNegativesRankingLoss,
+        MultipleNegativesSymmetricRankingLoss,
+        OnlineContrastiveLoss,
+        TripletLoss,
 )
 from sentence_transformers.training_args import BatchSamplers
 from sentence_transformers.util import cos_sim
 
+#####################  HELPER FUNCTION #####################
+
+def prepare_finetune_dataset(
+        file_path: str | None = None,
+        flag: bool = False
+    ) -> DatasetDict:
+        """Load a JSON dataset from the specified file path.
+
+        Then, split it into train, eval, and test datasets.
+        If no file path is provided, load the default
+        "sentence-transformers/all-nli" triplet dataset.
+
+        :param file_path: Path to the JSON file containing the dataset,
+                        or None to use the default dataset.
+        :return: A DatasetDict containing the train, eval, and test datasets.
+        """
+        if file_path:
+            # Load the dataset from the provided file path
+            dataset = load_dataset("json", data_files=file_path)
+
+            # Split the dataset into train and test
+            train_test_split = dataset["train"].train_test_split(test_size=0.2, seed=42)
+            train_dataset = train_test_split["train"]
+            test_dataset = train_test_split["test"]
+
+            # Further split the train dataset into train and eval
+            train_eval_split = train_dataset.train_test_split(test_size=0.1, seed=42)
+            train_dataset = train_eval_split["train"]
+            eval_dataset = train_eval_split["test"]
+
+            # Create a dataset dictionary
+            finetune_dataset = DatasetDict({
+                "train": train_dataset,
+                "eval": eval_dataset,
+                "test": test_dataset
+            })
+        else:
+            if flag:
+                # Load the default "sentence-transformers/all-nli" triplet dataset
+                finetune_dataset = load_dataset(
+                    "sentence-transformers/all-nli",
+                    "triplet"
+                )
+            else:
+                # Load dataset from the hub
+                dataset = load_dataset(
+                    "philschmid/finanical-rag-embedding-dataset",
+                    split="train"
+                )
+
+                # rename columns
+                dataset = dataset.rename_column("question", "anchor")
+                dataset = dataset.rename_column("context", "positive")
+
+                # Add an id column to the dataset
+                dataset = dataset.add_column("id", range(len(dataset)))
+
+                # split dataset into a 10% test set
+                dataset = dataset.train_test_split(test_size=0.1)
+
+                # Create a dataset dictionary
+                finetune_dataset = DatasetDict({
+                    "train": dataset["train"],
+                    "test": dataset["test"]
+                })
+
+        return finetune_dataset
+
+#####################  HELPER FUNCTION #####################
 
 ##########################  MODEL ##########################
 def initialize_model(
@@ -776,3 +845,26 @@ def create_matryoshka_info_ret_evaluator(
     return evaluator
 
 ######################## EVALUATORS ########################
+
+# Public API for this module
+
+__all__ = [
+    "prepare_finetune_dataset",
+    "initialize_model",
+    "print_available_losses",
+    "get_MNRL_or_matryoshka_loss",
+    "get_cached_MNRL_or_matryoshka_loss",
+    "get_symm_MNRL_or_matryoshka_loss",
+    "get_cached_symm_MNRL_or_matryoshka_loss",
+    "get_megabatch_margin_or_matryoshka_loss",
+    "get_MNRL_or_matryoshka2d_loss",
+    "get_contrastive_loss_or_matryoshka_loss",
+    "get_online_contrastive_loss_or_matryoshka_loss",
+    "get_triplet_loss_or_matryoshka_loss",
+    "create_training_arguments",
+    "create_training_arguments_matryoshka",
+    "create_tripletloss_evaluator",
+    "create_NanoBEIR_evaluator",
+    "create_informationretrieval_evaluator",
+    "create_matryoshka_info_ret_evaluator",
+]

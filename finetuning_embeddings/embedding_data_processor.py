@@ -5,7 +5,8 @@ Contains data processing utilities for embedding fine-tuning.
 import os
 
 import pandas as pd
-from utils import validate_file_path
+
+from finetuning_embeddings.utils import validate_file_path
 
 
 class EmbeddingDataProcessor:
