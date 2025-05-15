@@ -53,6 +53,9 @@ def prepare_finetune_dataset(
             # Load the dataset from the provided file path
             dataset = load_dataset("json", data_files=file_path)
 
+            # Add an id column to the dataset
+            dataset = dataset.add_column("id", range(len(dataset)))
+
             # Split the dataset into train and test
             train_test_split = dataset["train"].train_test_split(test_size=0.2, seed=42)
             train_dataset = train_test_split["train"]
