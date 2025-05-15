@@ -40,6 +40,9 @@ test-embeddings-triplet:
 test-embeddings-matryoshka:
 	python3 experiments/scripts/embedding_tests.py --method matryoshka --pod-name $(POD_NAME)
 
+test-embeddings-matryoshka-2d:
+	python3 experiments/scripts/embedding_tests.py --method matryoshka-2d --pod-name $(POD_NAME)
+
 # Define the container name based on the POD_NAME
 CONTAINER_NAME := $(POD_NAME)_dev
 

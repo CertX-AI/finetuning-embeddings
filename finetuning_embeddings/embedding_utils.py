@@ -461,6 +461,40 @@ def get_MNRL_or_matryoshka2d_loss(
     # Otherwise, simply return the standard MultipleNegativesRankingLoss.
     return base_loss
 
+def get_symm_MNRL_or_matryoshka2d_loss(
+    model: SentenceTransformer,
+    use_matryoshka: bool = False,
+    matryoshka_dims: list[int] | None = None
+) -> MultipleNegativesSymmetricRankingLoss | Matryoshka2dLoss:
+    """Return either MultipleNegativesSymmetricRankingLoss Matryoshka2dLoss.
+
+    :param model:            A SentenceTransformer instance.
+    :param use_matryoshka:   Whether to wrap the base loss in Matryoshka2dLoss.
+    :param matryoshka_dims:  Nested embedding dims if using Matryoshka2d (defaults).
+    :return:                 MultipleNegativesRankingLoss or Matryoshka2dLoss.
+    """
+    # Provide default nested dimensions if none were supplied
+    if matryoshka_dims is None:
+        matryoshka_dims = [768, 512, 256, 128, 64]
+
+    # Base retrieval loss: MultipleNegativesSymmetricRankingLoss uses
+    # in-batch negatives to train sentence embeddings for retrieval tasks.
+    base_loss = MultipleNegativesSymmetricRankingLoss(model)
+
+    # If the user requested Matryoshka2dLoss, wrap the base loss:
+    # - Matryoshka2dLoss will train several projection heads in nested order,
+    #   from the largest dimension down to the smallest, enforcing each head
+    #   to mimic the next-larger head.
+    if use_matryoshka:
+        return Matryoshka2dLoss(
+            model=model,
+            loss=base_loss,
+            matryoshka_dims=matryoshka_dims
+        )
+
+    # Otherwise, return the standard MultipleNegativesSymmetricRankingLoss.
+    return base_loss
+
 ############### ANCHOR-POSITIVE PAIRS LOSSES ###############
 
 ######### (ANCHOR, POSITIVE/NAGATIVE) PAIRS LOSSES #########
