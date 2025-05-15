@@ -161,4 +161,7 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-experiments/results
+# Fine-tuned embedding models
+experiments/results/contrastive/
+experiments/results/triplet/
+experiments/results/matryoshka/

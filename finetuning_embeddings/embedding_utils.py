@@ -254,7 +254,7 @@ def get_MNRL_or_matryoshka_loss(
     """
     # Provide default nested dimensions if none were supplied
     if matryoshka_dims is None:
-        matryoshka_dims = [768, 512, 256, 128, 64]
+        matryoshka_dims = [768, 512, 256, 128, 64] # Safety Net
 
     # Create the base retrieval loss: MultipleNegativesRankingLoss uses
     # in-batch negatives to train sentence embeddings for retrieval tasks.
@@ -809,17 +809,21 @@ def create_informationretrieval_evaluator(
 # Input pairs option: (anchor, positive) pairs
 def create_matryoshka_info_ret_evaluator(
     train_dataset: Dataset,
-    test_dataset: Dataset
+    test_dataset: Dataset,
+    curr_dims: list[int] | None = None
 ) -> SequentialEvaluator:
     """Create a SequentialEvaluator with matryoshka and return the evaluator.
 
     :param train_dataset: The dataset containing 'anchor' and 'positive' segments.
     :param test_dataset: The dataset containing 'anchor' and 'positive' segments.
-    :param name: The name of the evaluator.
+    :param curr_dims: Matryoshka dimensions for the evaluator.
     :return: The SequentialEvaluator for the specified dataset.
     """
     # Define Matryoshka dimensions
-    matryoshka_dimensions = [768, 512, 256, 128, 64]  # Large to small dimensions
+    if curr_dims is None:
+        curr_dims = [768, 512, 256, 128, 64]
+
+    matryoshka_dimensions = curr_dims  # Large to small dimensions
 
     # Concatenate train and test datasets to create a corpus
     corpus_dataset = concatenate_datasets([train_dataset, test_dataset])

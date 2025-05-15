@@ -37,12 +37,26 @@ from sentence_transformers import SentenceTransformerTrainer
 from finetuning_embeddings.embedding_utils import (
     prepare_finetune_dataset,
     initialize_model,
+    get_cached_MNRL_or_matryoshka_loss,
     get_MNRL_or_matryoshka_loss,
+    get_triplet_loss_or_matryoshka_loss,
     create_training_arguments,
     create_tripletloss_evaluator,
 )
 
-def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate, model_name):
+# ------------------------------------------------------------------
+# Map config names → helper functions
+# ------------------------------------------------------------------
+LOSS_MAPPING = {
+    "MultipleNegativesRankingLoss":       get_MNRL_or_matryoshka_loss,
+    "CachedMultipleNegativesRankingLoss": get_cached_MNRL_or_matryoshka_loss,
+    "TripletLoss":                        get_triplet_loss_or_matryoshka_loss,
+}
+
+def main(
+    num_train_epochs, experiment_name, run_name,output_dir,
+    learning_rate, model_name, loss_function,
+):
     """
     Main function to run the fine-tuning process for a SentenceTransformer model.
 
@@ -70,8 +84,14 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
         training_model =  initialize_model(model_name, use_prompts=False)
 
         # 3. Define the MNRL loss function
-        print(f"Creating an Instance for Multiple Negatives Ranking Loss...")
-        loss = get_MNRL_or_matryoshka_loss(
+        print(f"Creating an Instance for {loss_function}...")
+        try:
+            loss_fn = LOSS_MAPPING[loss_function]
+        except KeyError:
+            loss_fn = get_MNRL_or_matryoshka_loss              # default
+            loss_function = "MultipleNegativesRankingLoss"     # optional: record the fallback
+
+        loss = loss_fn(
             model= training_model,
             use_matryoshka=False
         )
@@ -186,6 +206,12 @@ if __name__ == "__main__":
         required=True,
         help="Name of the MLflow run"
     )
+    parser.add_argument(
+        "--loss_function",
+        type=str,
+        required=True,
+        help="Loss function for the experiment"
+    )
 
     args = parser.parse_args()
     print("Arguments are successfully parsed!!!")
@@ -198,8 +224,9 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         learning_rate=args.learning_rate,
         model_name=args.model_name,
+        loss_function=args.loss_function
     )
 
     print(f"Embedding model {args.model_name} is successfully finetuned!!!")
-    print(f"Multiple Negatives Ranking Loss (MNRL) technique has been used !!!")
+    print(f"{args.loss_function} as a loss function has been used !!!")
     print(f"Embedding model can be found in {args.output_dir} folder!!!")

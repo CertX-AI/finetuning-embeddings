@@ -78,25 +78,27 @@ def main():
     temp_run_name           = parameters[2]["run_name"]
     base_output_dir         = parameters[3]["output_dir"]
     learning_rate_options   = parameters[4]["learning_rate"]
-    model_name_options      = parameters[5]["model_name"]
+    loss_function_options   = parameters[5]["loss_function"]
+    model_name_options      = parameters[6]["model_name"]
 
     # Generate all combinations of (epochs, learning_rate, model_name)
     parameter_combinations = list(itertools.product(
         num_train_epochs_options,
         learning_rate_options,
-        model_name_options
+        model_name_options,
+        loss_function_options
     ))
 
     # Start the pod
     os.system("make run-local")
 
     # Execute each experiment combination inside the Podman container
-    for num_epochs, lr, model_name in parameter_combinations:
+    for num_epochs, lr, model_name, loss_function in parameter_combinations:
         # Substitute the model name into the output directory path
-        output_dir = base_output_dir.replace("mpnet-base-all-nli", model_name)
+        output_dir = base_output_dir.replace("mpnet-base-all-nli", f"{loss_function}/{model_name}")
         run_name = temp_run_name.replace(
             f"test_{method}",
-            f"test_{model_name}_{method}"
+            f"test_{model_name}_{method}_{loss_function}"
         )
 
         # Build the command-line arguments for the training script
@@ -106,14 +108,16 @@ def main():
             f"--model_name {model_name} "
             f"--output_dir {output_dir} "
             f"--experiment_name {experiment_name} "
-            f"--run_name {run_name}"
+            f"--run_name {run_name} "
+            f"--loss_function {loss_function}"
         )
 
         print(
             f"Running {method} experiment with "
-            f"epochs={num_epochs}, lr={lr}, model={model_name}\n"
+            f"epochs={num_epochs}, lr={lr}\n"
+            f"model={model_name}, loss function={loss_function}\n"
         )
-        print(f"Command args: {element_args}")
+        print(f"Command args: {element_args}\n")
 
         # Invoke the training script inside the specified pod
         os.system(

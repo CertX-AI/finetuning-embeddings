@@ -23,6 +23,7 @@ Arguments:
     --output_dir: Directory to save the trained model (required).
     --learning_rate: Initial learning rate for the optimizer (default: 2e-5).
     --model_name: Pre-trained model name to fine-tune (required).
+    --loss_function: Loss function name to be used in the experiment (required).
 
 Usage Example:
     python exp_finetuning_embeddings_mnrl_matryoshka.py --num_train_epochs 1 \
@@ -37,12 +38,27 @@ from sentence_transformers import SentenceTransformerTrainer
 from finetuning_embeddings.embedding_utils import (
     prepare_finetune_dataset,
     initialize_model,
+    get_cached_MNRL_or_matryoshka_loss,
+    get_cached_symm_MNRL_or_matryoshka_loss,
+    get_megabatch_margin_or_matryoshka_loss,
     get_MNRL_or_matryoshka_loss,
+    get_symm_MNRL_or_matryoshka_loss,
     create_training_arguments_matryoshka,
     create_matryoshka_info_ret_evaluator,
 )
 
-def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate, model_name):
+# ------------------------------------------------------------------
+# Map config names → helper functions
+# ------------------------------------------------------------------
+LOSS_MAPPING = {
+    "MultipleNegativesRankingLoss":                get_MNRL_or_matryoshka_loss,
+    "CachedMultipleNegativesRankingLoss":          get_cached_MNRL_or_matryoshka_loss,
+    "MultipleNegativesSymmetricRankingLoss":       get_symm_MNRL_or_matryoshka_loss,
+    "CachedMultipleNegativesSymmetricRankingLoss": get_cached_symm_MNRL_or_matryoshka_loss,
+    "MegaBatchMarginLoss":                         get_megabatch_margin_or_matryoshka_loss,
+}
+
+def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate, model_name, loss_function):
     """
     Main function to run the fine-tuning process for a SentenceTransformer model.
 
@@ -75,13 +91,20 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
         if "large" in model_name:
             matryoshka_dims = [1024, 768, 512, 256, 128, 64]
         else:
-            matryoshka_dims = None
+            matryoshka_dims = [768, 512, 256, 128, 64]
 
-        loss = get_MNRL_or_matryoshka_loss(
+        try:
+            loss_fn = LOSS_MAPPING[loss_function]
+        except KeyError:
+            loss_fn = get_MNRL_or_matryoshka_loss              # default
+            loss_function = "MultipleNegativesRankingLoss"     # optional: record the fallback
+
+        loss = loss_fn(
             model=training_model,
             use_matryoshka=True,
             matryoshka_dims=matryoshka_dims,
         )
+        print(f"Using loss: {loss_function}")
 
         # 4. Specify training arguments
         print("Configuring training arguments...")
@@ -115,17 +138,16 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
         print("Creating Matryoshka evaluator...")
         matryoshka_evaluator = create_matryoshka_info_ret_evaluator(
             train_dataset,
-            test_dataset
+            test_dataset,
+            curr_dims=matryoshka_dims
         )
 
-        # Important: large to small
-        matryoshka_dimensions = [768, 512, 256, 128, 64]
         print("Evaluation before finetuning")
         # Evaluate the model
         results = matryoshka_evaluator(training_model)
 
         # Iterate over matryoshka dimensions and log the results
-        for dim in matryoshka_dimensions:
+        for dim in matryoshka_dims:
             key = f"dim_{dim}_cosine_ndcg@10"
             metric_key = f"before-finetuning_dim_{dim}_cosine_ndcg-10"  # Add the prefix here
             print(f"{metric_key}: {results[key]}")
@@ -150,7 +172,7 @@ def main(num_train_epochs, experiment_name, run_name, output_dir, learning_rate,
         final_results = matryoshka_evaluator(training_model)
 
         # Iterate over matryoshka dimensions and log the results
-        for dim in matryoshka_dimensions:
+        for dim in matryoshka_dims:
             metric_key = f"after-finetuning_dim_{dim}_cosine_ndcg-10"  # Add the prefix here
             print(f"{metric_key}: {final_results[key]}")
             mlflow.log_metric(metric_key, final_results[key])
@@ -200,6 +222,12 @@ if __name__ == "__main__":
         required=True,
         help="Name of the MLflow run"
     )
+    parser.add_argument(
+        "--loss_function",
+        type=str,
+        required=True,
+        help="Loss function for the experiment"
+    )
 
     args = parser.parse_args()
     print("Arguments are successfully parsed!!!")
@@ -212,8 +240,9 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         learning_rate=args.learning_rate,
         model_name=args.model_name,
+        loss_function=args.loss_function
     )
 
     print(f"Embedding model {args.model_name} is successfully finetuned!!!")
-    print(f"Multiple Negatives Ranking Loss (MNRL) with Matryoshka technique has been used !!!")
+    print(f"{args.loss_function} with Matryoshka technique has been used !!!")
     print(f"Embedding model can be found in {args.output_dir} folder!!!")
